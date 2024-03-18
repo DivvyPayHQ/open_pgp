@@ -1,5 +1,10 @@
 # OpenPGP
 
+[![Build Status](https://github.com/DivvyPayHQ/open_pgp/workflows/CI/badge.svg)](https://github.com/DivvyPayHQ/open_pgp/actions?query=workflow%3ACI)
+[![Hex pm](https://img.shields.io/hexpm/v/open_pgp.svg)](https://hex.pm/packages/open_pgp)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/open_pgp/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 OpenPGP lib allows to inspect, decode and decrypt OpenPGP Message Format as per [RFC4880](https://www.ietf.org/rfc/rfc4880.html)
 
 ## Installation
@@ -18,7 +23,7 @@ end
 
 The `OpenPGP.Packet` is a generic packet type. It has an essential purpose: split OpenPGP message in packets and decode packet tags.
 
-An OpenPGP message is constructed from a number of records that are traditionally called packets.  A packet is a chunk of data that has a tag specifying its meaning.  An OpenPGP message, keyring, certificate, and so forth consists of a number of packets.  Some of those packets may contain other OpenPGP packets (for example, a compressed data packet, when uncompressed, contains OpenPGP packets). Each packet consists of a packet header, followed by the packet body. For more details refer to [Packet Syntax chapter in RFC4880](https://www.ietf.org/rfc/rfc4880.html#section-4) 
+An OpenPGP message is constructed from a number of records that are traditionally called packets. A packet is a chunk of data that has a tag specifying its meaning. An OpenPGP message, keyring, certificate, and so forth consists of a number of packets. Some of those packets may contain other OpenPGP packets (for example, a compressed data packet, when uncompressed, contains OpenPGP packets). Each packet consists of a packet header, followed by the packet body. For more details refer to [Packet Syntax chapter in RFC4880](https://www.ietf.org/rfc/rfc4880.html#section-4)
 
 Once OpenPGP message split into generic packets, the higher order tag-specific packet decoders can be applied on its' data. Example:
 
@@ -69,7 +74,7 @@ iex> OpenPGP.cast_packets(packets)
 
 ### Decode Generic OpenPGP packet
 
-In this example the packet tag specifies a Signature Packet with body length of 7 bytes. The  remaining binary will be return as a second element in a two element tuple. More details in `OpenPGP.Packet.Behaviour`.
+In this example the packet tag specifies a Signature Packet with body length of 7 bytes. The remaining binary will be return as a second element in a two element tuple. More details in `OpenPGP.Packet.Behaviour`.
 
 ```
 iex> alias OpenPGP.Packet
@@ -156,14 +161,14 @@ As of **v0.5.x**:
 
 1. Any valid OpenPGP message can be decoded via generic `OpenPGP.Packet` decoder. This abstraction layer provide Packet Tags and Body Chunks for packet envelope level evaluation.
 1. Some Packet Tag specific decoders implemented with limited feature support:
-    1. `OpenPGP.LiteralDataPacket`
-    1. `OpenPGP.PublicKeyEncryptedSessionKeyPacket`
-    1. `OpenPGP.PublicKeyPacket` - support only V4 packets
-    1. `OpenPGP.SecretKeyPacket` - support only V4 packets; Iterated and Salted String-to-Key (S2K) specifier (ID: 3); S2K usage convention octet of 254 only; S2K hashing algo SHA1; AES128 symmetric encryption of secret key material
-    1. `OpenPGP.CompressedDataPacket` - support only ZLIB- and ZIP-style blocks
-    1. `OpenPGP.IntegrityProtectedDataPacket` - support Session Key algo 9 (AES with 256-bit key) in CFB mode; Modification Detection Code system is not supported
+   1. `OpenPGP.LiteralDataPacket`
+   1. `OpenPGP.PublicKeyEncryptedSessionKeyPacket`
+   1. `OpenPGP.PublicKeyPacket` - support only V4 packets
+   1. `OpenPGP.SecretKeyPacket` - support only V4 packets; Iterated and Salted String-to-Key (S2K) specifier (ID: 3); S2K usage convention octet of 254 only; S2K hashing algo SHA1; AES128 symmetric encryption of secret key material
+   1. `OpenPGP.CompressedDataPacket` - support only ZLIB- and ZIP-style blocks
+   1. `OpenPGP.IntegrityProtectedDataPacket` - support Session Key algo 9 (AES with 256-bit key) in CFB mode; Modification Detection Code system is not supported
 
-At a high level `OpenPGP.list_packets/1` and `OpenPGP.cast_packets/1` serve as an entrypoint to OpenPGP Message decoding and extracting generic data. 
+At a high level `OpenPGP.list_packets/1` and `OpenPGP.cast_packets/1` serve as an entrypoint to OpenPGP Message decoding and extracting generic data.
 
 Packet specific decoders implement `OpenPGP.Packet.Behaviour`, which exposes `.decode/1` interface (including genric `OpenPGP.Packet`). Additionaly some of the packet specific decoders may provide interface for further packet processing, such as `OpenPGP.SecretKeyPacket.decrypt/2`.
 
