@@ -261,7 +261,6 @@ vBSFjNSiVHsuAA==
     name: "PGP MESSAGE"
   }
 ] = OpenPGP.Radix64.decode(payload)
-"""
 ```
 
 ## Notes

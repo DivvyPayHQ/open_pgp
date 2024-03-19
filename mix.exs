@@ -2,7 +2,7 @@ defmodule OpenPGP.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/DivvyPayHQ/open_pgp"
-  @version "0.5.0"
+  @version "0.5.1"
   @description "OpenPGP Message Format in Elixir - RFC4880"
 
   def project() do
