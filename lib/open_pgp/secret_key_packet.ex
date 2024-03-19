@@ -149,7 +149,7 @@ defmodule OpenPGP.SecretKeyPacket do
       <<s2k_usage::8, sym_algo::8, next::binary>> when s2k_usage == 254 ->
         {s2k_specifier, next} = S2KSpecifier.decode(next)
         iv_size = Util.sym_algo_cipher_block_size(sym_algo)
-        <<iv::bits-size(iv_size), ciphertext::binary()>> = next
+        <<iv::bits-size(iv_size), ciphertext::binary>> = next
 
         packet = %__MODULE__{
           public_key: public_key,
