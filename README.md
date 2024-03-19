@@ -90,6 +90,91 @@ iex> Packet.decode(<<1::1, 0::1, 2::4, 0::2, 7::8, "Hello, World!!!">>)
 }
 ```
 
+### Load private key and decrypt PGP file
+
+This example assumes that the private key and encrypted message were exported in a raw binary format, which might not be the most common way of exporting PGP entries. If "armored" format ([Radix64](https://www.rfc-editor.org/rfc/rfc4880.html#section-6)) is used for exporting data (i.e., `gpg --armor --export ...`), you'll need to use `OpenPGP.Radix64.decode/1` first on file contents to get a list of entries and operate on its' `:data` attribute.
+
+```
+alias OpenPGP.Packet
+alias OpenPGP.Packet.PacketTag
+alias OpenPGP.CompressedDataPacket
+alias OpenPGP.IntegrityProtectedDataPacket
+alias OpenPGP.LiteralDataPacket
+alias OpenPGP.PublicKeyPacket
+alias OpenPGP.PublicKeyEncryptedSessionKeyPacket
+alias OpenPGP.SecretKeyPacket
+
+###################################
+### Load encrypted message/file ###
+###################################
+
+encrypted_file = File.read!("test/fixtures/words.dict.gpg")
+
+[
+  %PublicKeyEncryptedSessionKeyPacket{} = pkesk_packet,
+  %IntegrityProtectedDataPacket{} = ipdata_packet
+] = encrypted_file |> OpenPGP.list_packets() |> OpenPGP.cast_packets()
+
+%PublicKeyEncryptedSessionKeyPacket{public_key_id: public_key_id} = pkesk_packet
+
+#######################
+### Load secret key ###
+#######################
+
+private_key_file = File.read!("test/fixtures/rsa2048-priv.pgp")
+passphrase = "passphrase"
+
+keyring =
+  [
+    %SecretKeyPacket{},
+    %Packet{tag: %PacketTag{tag: {13, "User ID Packet"}}},
+    %Packet{tag: %PacketTag{tag: {2, "Signature Packet"}}},
+    %SecretKeyPacket{},
+    %Packet{tag: %PacketTag{tag: {2, "Signature Packet"}}}
+  ] = private_key_file |> OpenPGP.list_packets() |> OpenPGP.cast_packets()
+
+sk_packet =
+  Enum.find_value(keyring, fn
+    %SecretKeyPacket{public_key: %PublicKeyPacket{id: ^public_key_id}} = packet -> packet
+    _ -> nil
+  end)
+
+sk_packet_decrypted = SecretKeyPacket.decrypt(sk_packet, passphrase)
+
+################################
+### Decode encrypted message ###
+################################
+
+pkesk_packet_decrypted = PublicKeyEncryptedSessionKeyPacket.decrypt(pkesk_packet, sk_packet_decrypted)
+
+ipdata_packet_decrypted = IntegrityProtectedDataPacket.decrypt(ipdata_packet, pkesk_packet_decrypted)
+
+%IntegrityProtectedDataPacket{
+  version: 1,
+  ciphertext: "" <> _,
+  plaintext: plaintext
+} = ipdata_packet_decrypted
+
+[
+  %CompressedDataPacket{
+    algo: {2, "ZLIB [RFC1950]"},
+    data_deflated: <<_::bitstring>>,
+    data_inflated: data_inflated
+  }
+] = plaintext |> OpenPGP.list_packets() |> OpenPGP.cast_packets()
+
+[
+  %LiteralDataPacket{
+    format: {<<0x62>>, :binary},
+    file_name: "words.dict",
+    created_at: ~U[2024-01-04 00:27:32Z],
+    data: data
+  }
+] = data_inflated |> OpenPGP.list_packets() |> OpenPGP.cast_packets()
+
+IO.puts(data)
+```
+
 ### CompressedDataPacket
 
 The `OpenPGP.CompressedDataPacket` will inflate data implicitly when decoded (also, data inflated implicitly when `OpenPGP.cast_packets/1` used).
@@ -153,6 +238,30 @@ iex> IntegrityProtectedDataPacket.decrypt(packet_decoded, pkesk)
   plaintext: "Hello",
   ciphertext: ciphertext
 }
+```
+
+### Radix64 / Armored format
+
+```
+payload = """
+-----BEGIN PGP MESSAGE-----
+Version: OpenPrivacy 0.99
+
+yDgBO22WxBHv7O8X7O/jygAEzol56iUKiXmV+XmpCtmpqQUKiQrFqclFqUDBovzS
+vBSFjNSiVHsuAA==
+=njUN
+-----END PGP MESSAGE-----
+"""
+
+[
+  %Radix64.Entry{
+    crc: <<158, 53, 13>>,
+    data: <<200, 56, 1, 59, _::binary>> = data,
+    meta: [{"Version", "OpenPrivacy 0.99"}],
+    name: "PGP MESSAGE"
+  }
+] = OpenPGP.Radix64.decode(payload)
+"""
 ```
 
 ## Notes
