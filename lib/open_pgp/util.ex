@@ -68,19 +68,18 @@ defmodule OpenPGP.Util do
 
       iex> OpenPGP.Util.encode_mpi(<<0x1, 0xFF>>)
       <<0x0, 0x9, 0x1, 0xFF>>
+
+      iex> :crypto.strong_rand_bytes(65536) |> OpenPGP.Util.encode_mpi()
+      ** (RuntimeError) big-endian is too long
   """
-  @spec encode_mpi(mpi_value :: binary()) :: binary()
-  def encode_mpi(mpi_value) do
-    bits = for <<bit::1 <- mpi_value>>, do: bit
-    bsize = bit_size(mpi_value)
+  @spec encode_mpi(big_endian :: binary()) :: mpi :: <<_::16, _::_*8>>
+  def encode_mpi("" <> _ = big_endian) do
+    if byte_size(big_endian) > 65535, do: raise("big-endian is too long")
 
-    mpi_length =
-      Enum.reduce_while(bits, bsize, fn
-        1, acc -> {:halt, acc}
-        0, acc -> {:cont, acc - 1}
-      end)
+    bit_list = for <<bit::1 <- big_endian>>, do: bit
+    bit_count = bit_list |> Enum.drop_while(&(&1 == 0)) |> length()
 
-    <<mpi_length::16, mpi_value::binary>>
+    <<bit_count::16, big_endian::binary>>
   end
 
   @doc """
