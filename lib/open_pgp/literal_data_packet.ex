@@ -104,4 +104,45 @@ defmodule OpenPGP.LiteralDataPacket do
 
     {packet, ""}
   end
+
+  @doc "See `encode/2`"
+  @spec encode(data :: binary()) :: binary()
+  def encode("" <> _ = data), do: encode(data, [])
+
+  @doc """
+  Encode Literal Data Packet given input binary.
+  Return encoded binary.
+
+  Options:
+
+  - `:format` - describes how the encoded data is formatted. Valid values - `:binary`, `:text`, `:text_utf8`. Default: `:binary`
+  - `:file_name` - the name of the encrypted file. Default: `nil`
+  - `:created_at` - the date and time associated with the data. Default: `System.os_time(:second)`
+  """
+  @spec encode(data :: binary(), opts :: Keyword.t()) :: binary()
+  def encode("" <> _ = data, opts) do
+    formats = Map.new(@formats, fn {k, v} -> {v, k} end)
+    format = Keyword.get(opts, :format, :binary)
+
+    format_byte =
+      Map.get(formats, format) ||
+        raise """
+        Unknown Literal Data Packet format: #{inspect(format)}.
+        Known formats: #{inspect(Map.keys(formats))}
+        """
+
+    fname_string =
+      case Keyword.get(opts, :file_name) do
+        fname when is_binary(fname) and byte_size(fname) > 0 -> <<byte_size(fname)::8, fname::binary>>
+        _ -> <<0::8>>
+      end
+
+    timestamp =
+      case Keyword.get(opts, :created_at) do
+        %DateTime{} = date -> DateTime.to_unix(date)
+        nil -> System.os_time(:second)
+      end
+
+    <<format_byte::binary, fname_string::binary, timestamp::32, data::binary>>
+  end
 end
