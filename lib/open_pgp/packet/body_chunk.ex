@@ -143,6 +143,36 @@ defmodule OpenPGP.Packet.BodyChunk do
     {chunk, rest}
   end
 
+  @doc """
+  Encode body chunk given input binary. Always uses new packet format.
+  Return encoded body chunk with the length header prefix.
+  """
+  @spec encode(input :: binary()) :: binary()
+  def encode("" <> _ = input) do
+    blen = byte_size(input)
+
+    hlen =
+      cond do
+        blen in 0..191 ->
+          <<blen::8>>
+
+        blen in 192..8383 ->
+          <<b1::8, b2::8>> = <<blen - 192::16>>
+          <<b1 + 192::8, b2::8>>
+
+        blen in 8384..0xFFFFFFFF ->
+          <<255::8, blen::32>>
+
+        true ->
+          raise """
+          Encoding of body chunks with length greater than 0xFFFFFFFF octets is not implemented.
+          Consider implementing a Partial Body Length Header.
+          """
+      end
+
+    hlen <> input
+  end
+
   @spec length_header(data :: binary(), PTag.t()) ::
           {header_length(), chunk_length(), rest :: binary()}
   defp length_header(<<blength::8, rest::binary>>, %PTag{format: :old, length_type: {0, _}}) do

@@ -169,4 +169,20 @@ defmodule OpenPGP.Packet.BodyChunkTest do
       assert pt1 <> rest == rand_bytes
     end
   end
+
+  describe ".encode/1" do
+    test "encodes one-octet length New Format Packet Length Header (up to 191 octets)" do
+      assert <<12::8, "Hello world!">> == BChunk.encode("Hello world!")
+    end
+
+    test "encodes two-octet length New Format Packet Length Header (192-8383 octets)" do
+      rand_bytes = :crypto.strong_rand_bytes(255)
+      assert <<192::8, 63::8, rand_bytes::binary>> == BChunk.encode(rand_bytes)
+    end
+
+    test "encodes five-octet length New Format Packet Length Header (8384-4,294,967,295 octets)" do
+      rand_bytes = :crypto.strong_rand_bytes(8384)
+      assert <<255::8, 8384::32, rand_bytes::binary>> == BChunk.encode(rand_bytes)
+    end
+  end
 end

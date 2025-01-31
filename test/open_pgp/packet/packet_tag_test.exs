@@ -21,4 +21,14 @@ defmodule OpenPGP.Packet.PacketTagTest do
               }, ""} = PacketTag.decode(<<1::1, 1::1, 5::6>>)
     end
   end
+
+  describe ".encode/1" do
+    test "encodes new packet format with integer" do
+      assert <<1::1, 1::1, 1::6>> = PacketTag.encode(1)
+    end
+
+    test "encodes new packet format with tuple" do
+      assert <<1::1, 1::1, 1::6>> = PacketTag.encode({1, "Public-Key Encrypted Session Key Packet"})
+    end
+  end
 end

@@ -66,6 +66,20 @@ defmodule OpenPGP.Packet do
     {packet, rest}
   end
 
+  @doc """
+  Encode packet given a packet tag tuple (or integer) and an input binary (packet body).
+  Return encoded packet binary - a packet header, followed by the packet body.
+
+  ### Example:
+
+      iex> OpenPGP.Packet.encode(11, "Hello, World!!!")
+      <<1::1, 1::1, 11::6, 15::8, "Hello, World!!!">>
+  """
+  @spec encode(PacketTag.tag_tuple() | non_neg_integer(), input :: binary()) :: binary()
+  def encode(ptag, "" <> _ = input) do
+    PacketTag.encode(ptag) <> BodyChunk.encode(input)
+  end
+
   @spec collect_chunks(input :: binary(), PacketTag.t(), acc :: [BodyChunk.t()]) ::
           {[BodyChunk.t()], rest :: binary()}
   defp collect_chunks("" <> _ = input, %PacketTag{} = ptag, acc) when is_list(acc) do
