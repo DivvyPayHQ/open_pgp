@@ -85,6 +85,7 @@ defmodule OpenPGP do
           | OpenPGP.CompressedDataPacket.t()
           | OpenPGP.IntegrityProtectedDataPacket.t()
           | OpenPGP.LiteralDataPacket.t()
+          | OpenPGP.ModificationDetectionCodePacket.t()
 
   @doc """
   Decode all packets in a message (input).
