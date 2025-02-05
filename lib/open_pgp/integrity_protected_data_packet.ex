@@ -193,24 +193,22 @@ defmodule OpenPGP.IntegrityProtectedDataPacket do
   def encode("" <> _ = input), do: <<@version::8, input::binary>>
 
   @doc """
-  Encrypt plaintext binary with a given symmetrical algorithm.
-  Returns a tuple with ciphertext and sym.key used for encyption.
+  Encrypt plaintext binary with a given symmetrical key and algorithm.
+  Returns a ciphertext binary encrypted with a given sym.key.
   Accepts options keyword list as a third argument (optional):
 
     - `:use_mdc` - the Modification Detection Code Packet added if set to `true` (default `true`)
   """
-  @spec encrypt(plaintext, algo, opts) :: {ciphertext, sym_key}
+  @spec encrypt(plaintext, sym_key, sym_algo, opts) :: ciphertext
         when plaintext: binary(),
-             algo: Util.sym_algo_tuple() | byte(),
-             ciphertext: binary(),
              sym_key: binary(),
+             sym_algo: Util.sym_algo_tuple() | byte(),
+             ciphertext: binary(),
              opts: [{:use_mdc, boolean()}]
-  def encrypt(plaintext, algo, opts \\ []) do
-    key_size = Util.sym_algo_key_size(algo)
-    crypto_cipher = sym_algo_to_crypto_cipher(algo)
-    sym_key = :crypto.strong_rand_bytes(div(key_size, 8))
-    null_iv = build_null_iv(algo)
-    checksum = build_checksum(algo)
+  def encrypt(plaintext, sym_key, sym_algo, opts \\ []) do
+    crypto_cipher = sym_algo_to_crypto_cipher(sym_algo)
+    null_iv = build_null_iv(sym_algo)
+    checksum = build_checksum(sym_algo)
 
     data =
       if Keyword.get(opts, :use_mdc, true),
@@ -219,7 +217,7 @@ defmodule OpenPGP.IntegrityProtectedDataPacket do
 
     ciphertext = :crypto.crypto_one_time(crypto_cipher, sym_key, null_iv, data, true)
 
-    {ciphertext, sym_key}
+    ciphertext
   end
 
   @spec sym_algo_to_crypto_cipher(Util.sym_algo_tuple() | byte()) :: :aes_128_cfb128 | :aes_192_cfb128 | :aes_256_cfb128

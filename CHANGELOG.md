@@ -11,7 +11,7 @@
   * `OpenPGP.Packet.encode/1`
   * `OpenPGP.Packet.PacketTag.encode/1`
   * `OpenPGP.Packet.BodyChunk.encode/1`
-* Added `OpenPGP.IntegrityProtectedDataPacket.ecrypt/2,3` with AES-128, AES-192, AES-256 (Sym.algo 7,8,9)
+* Added `OpenPGP.IntegrityProtectedDataPacket.ecrypt/3,4` with AES-128, AES-192, AES-256 (Sym.algo 7,8,9)
 * Added `OpenPGP.PublicKeyEncryptedSessionKeyPacket.ecrypt/4` with Elgamal (Public-Key algo 16)
 * Add ElGamal algorithm support to `OpenPGP.PublicKeyPacket.decode/1`.
 * Introduced `OpenPGP.ModificationDetectionCodePacket`

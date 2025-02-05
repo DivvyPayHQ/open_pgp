@@ -8,7 +8,8 @@ defmodule OpenPGP.IntegrityProtectedDataPacketTest do
   describe ".encrypt/2,3" do
     @algo {7, "AES with 128-bit key [AES]"}
     test "encrypt plaintext with AES-128" do
-      assert {ciphertext, sym_key} = IPDPacket.encrypt("Hello!", @algo, use_mdc: true)
+      sym_key = :crypto.strong_rand_bytes(16)
+      assert ciphertext = IPDPacket.encrypt("Hello!", sym_key, @algo, use_mdc: true)
 
       assert %IPDPacket{plaintext: "Hello!"} =
                IPDPacket.decrypt(
@@ -20,7 +21,8 @@ defmodule OpenPGP.IntegrityProtectedDataPacketTest do
 
     @algo {8, "AES with 192-bit key"}
     test "encrypt plaintext with AES-192" do
-      assert {ciphertext, sym_key} = IPDPacket.encrypt("Hello!", @algo, use_mdc: true)
+      sym_key = :crypto.strong_rand_bytes(24)
+      assert ciphertext = IPDPacket.encrypt("Hello!", sym_key, @algo, use_mdc: true)
 
       assert %IPDPacket{plaintext: "Hello!"} =
                IPDPacket.decrypt(
@@ -32,7 +34,8 @@ defmodule OpenPGP.IntegrityProtectedDataPacketTest do
 
     @algo {9, "AES with 256-bit key"}
     test "encrypt plaintext with AES-256" do
-      assert {ciphertext, sym_key} = IPDPacket.encrypt("Hello!", @algo, use_mdc: true)
+      sym_key = :crypto.strong_rand_bytes(32)
+      assert ciphertext = IPDPacket.encrypt("Hello!", sym_key, @algo, use_mdc: true)
 
       assert %IPDPacket{plaintext: "Hello!"} =
                IPDPacket.decrypt(
@@ -44,7 +47,9 @@ defmodule OpenPGP.IntegrityProtectedDataPacketTest do
 
     @algo {7, "AES with 128-bit key [AES]"}
     test "encrypt plaintext with AES-128 and no MDC" do
-      assert {ciphertext, sym_key} = IPDPacket.encrypt("Hello!", @algo, use_mdc: false)
+      sym_key = :crypto.strong_rand_bytes(16)
+
+      assert ciphertext = IPDPacket.encrypt("Hello!", sym_key, @algo, use_mdc: false)
 
       assert %IPDPacket{plaintext: "Hello!"} =
                IPDPacket.decrypt(
@@ -56,7 +61,8 @@ defmodule OpenPGP.IntegrityProtectedDataPacketTest do
 
     @algo {7, "AES with 128-bit key [AES]"}
     test "encrypt plaintext with AES-128 and no MDC (default behavior of .decrypt/2)" do
-      assert {ciphertext, sym_key} = IPDPacket.encrypt("Hello!", @algo, use_mdc: false)
+      sym_key = :crypto.strong_rand_bytes(16)
+      assert ciphertext = IPDPacket.encrypt("Hello!", sym_key, @algo, use_mdc: false)
 
       assert %IPDPacket{plaintext: "Hello!"} =
                IPDPacket.decrypt(
