@@ -125,22 +125,6 @@ defmodule OpenPGP.Packet.PacketTag do
     {ptag, rest}
   end
 
-  @doc """
-  Encode packet tag. Always uses new packet format.
-  Return encoded packet tag octet.
-
-  ### Example:
-
-      iex> OpenPGP.Packet.PacketTag.encode(1)
-      <<1::1, 1::1, 1::6>>
-
-      iex> OpenPGP.Packet.PacketTag.encode({2, "Signature Packet"})
-      <<1::1, 1::1, 2::6>>
-  """
-  @spec encode(tag_tuple() | non_neg_integer()) :: <<_::8>>
-  def encode({ptag, _name}), do: encode(ptag)
-  def encode(ptag) when is_integer(ptag) and ptag in 0..63, do: <<1::1, 1::1, ptag::6>>
-
   @ptags %{
     0 => "Reserved - a packet tag MUST NOT have this value",
     1 => "Public-Key Encrypted Session Key Packet",

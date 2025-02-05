@@ -1,7 +1,9 @@
 defmodule OpenPGP.PublicKeyEncryptedSessionKeyPacketTest do
   use OpenPGP.Test.Case, async: true
   doctest OpenPGP.PublicKeyEncryptedSessionKeyPacket
+  doctest OpenPGP.Encode.impl_for!(%OpenPGP.PublicKeyEncryptedSessionKeyPacket{})
 
+  alias OpenPGP.Encode
   alias OpenPGP.Packet
   alias OpenPGP.Packet.PacketTag
   alias OpenPGP.PublicKeyEncryptedSessionKeyPacket
@@ -36,12 +38,13 @@ defmodule OpenPGP.PublicKeyEncryptedSessionKeyPacketTest do
 
   describe ".encode/3" do
     test "encodes packet body" do
-      ciphertext = "Ciphertext"
-      public_key_id = "6BAF2C48"
-      public_key_algo = {16, "Elgamal (Encrypt-Only) [ELGAMAL] [HAC]"}
+      packet = %PublicKeyEncryptedSessionKeyPacket{
+        ciphertext: "Ciphertext",
+        public_key_id: "6BAF2C48",
+        public_key_algo: {16, "Elgamal (Encrypt-Only) [ELGAMAL] [HAC]"}
+      }
 
-      assert body = PublicKeyEncryptedSessionKeyPacket.encode(ciphertext, public_key_id, public_key_algo)
-      assert <<3::8, public_key_id::binary, 16::8, ciphertext::binary>> == body
+      assert <<3::8, "6BAF2C48", 16::8, "Ciphertext">> == Encode.encode(packet)
     end
   end
 

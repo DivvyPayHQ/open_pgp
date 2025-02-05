@@ -126,25 +126,6 @@ defmodule OpenPGP.PublicKeyEncryptedSessionKeyPacket do
   end
 
   @doc """
-  Encode Public-Key Encrypted Session Key Packet given input ciphertext, public key ID and public key algo.
-  Return Public-Key Encrypted Session Key Packet binary.
-
-  ### Example
-
-      iex> alias OpenPGP.PublicKeyEncryptedSessionKeyPacket, as: PKESK 
-      ...> ciphertext = "Ciphertext"
-      ...> recipient_public_key_id = "6BAF2C48"
-      ...> recipient_public_key_algo = {16, "Elgamal (Encrypt-Only) [ELGAMAL] [HAC]"}
-      ...> PKESK.encode(ciphertext, recipient_public_key_id, recipient_public_key_algo)
-      <<3::8, recipient_public_key_id::binary, 16::8, ciphertext::binary>>
-  """
-  @version 3
-  @spec encode(ciphertext :: binary(), public_key_id :: binary(), Util.public_key_algo_tuple()) :: binary()
-  def encode("" <> _ = ciphertext, "" <> _ = public_key_id, {pub_key_algo_id, _}) do
-    <<@version::8, public_key_id::binary, pub_key_algo_id::8, ciphertext::binary>>
-  end
-
-  @doc """
   Decrypt Public-Key Encrypted Session Key Packet given decoded
   Public-Key Encrypted Session Key Packet and decoded and decrypted
   Secret-Key Packet.

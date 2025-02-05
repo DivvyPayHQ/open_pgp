@@ -73,19 +73,20 @@ defmodule OpenPGP do
       ]
   """
 
+  alias __MODULE__.Encode
   alias __MODULE__.Packet
   alias __MODULE__.Packet.PacketTag
   alias __MODULE__.Util
 
   @type any_packet ::
-          OpenPGP.Packet.t()
-          | OpenPGP.PublicKeyEncryptedSessionKeyPacket.t()
-          | OpenPGP.SecretKeyPacket.t()
-          | OpenPGP.PublicKeyPacket.t()
-          | OpenPGP.CompressedDataPacket.t()
-          | OpenPGP.IntegrityProtectedDataPacket.t()
-          | OpenPGP.LiteralDataPacket.t()
-          | OpenPGP.ModificationDetectionCodePacket.t()
+          %OpenPGP.Packet{}
+          | %OpenPGP.PublicKeyEncryptedSessionKeyPacket{}
+          | %OpenPGP.SecretKeyPacket{}
+          | %OpenPGP.PublicKeyPacket{}
+          | %OpenPGP.CompressedDataPacket{}
+          | %OpenPGP.IntegrityProtectedDataPacket{}
+          | %OpenPGP.LiteralDataPacket{}
+          | %OpenPGP.ModificationDetectionCodePacket{}
 
   @doc """
   Decode all packets in a message (input).
@@ -145,5 +146,15 @@ defmodule OpenPGP do
       _ ->
         packet
     end
+  end
+
+  @doc "Encode any packet (except for %Packet{})."
+  @spec encode_packet(any_packet()) :: binary()
+  def encode_packet(%{} = packet) do
+    tag = Encode.tag(packet)
+    ptag = %PacketTag{format: :new, tag: tag}
+    body = Encode.encode(packet)
+
+    Encode.encode(%Packet{tag: ptag, body: body})
   end
 end

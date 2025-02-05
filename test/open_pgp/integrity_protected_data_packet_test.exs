@@ -1,6 +1,7 @@
 defmodule OpenPGP.IntegrityProtectedDataPacketTest do
   use OpenPGP.Test.Case, async: true
   doctest OpenPGP.IntegrityProtectedDataPacket
+  doctest OpenPGP.Encode.impl_for!(%OpenPGP.IntegrityProtectedDataPacket{})
 
   alias OpenPGP.IntegrityProtectedDataPacket, as: IPDPacket
   alias OpenPGP.PublicKeyEncryptedSessionKeyPacket, as: PKESK

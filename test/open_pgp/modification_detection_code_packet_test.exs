@@ -29,4 +29,11 @@ defmodule OpenPGP.ModificationDetectionCodePacketTest do
       end
     end
   end
+
+  describe ".append_to/1" do
+    test "return input binary with MDC appended" do
+      assert <<"Hello", 0xD3, 0x14, 227, 31, 247, 172, 136, 16, 149, 100, 94, 82, 223, 75, 23, 29, 209, 110, 63, 139,
+               153, 38>> = ModificationDetectionCodePacket.append_to("Hello")
+    end
+  end
 end

@@ -151,7 +151,7 @@ defmodule OpenPGP.IntegrityProtectedDataPacket do
   Raises an error if checksum does not match.
   Accepts options keyword list as a third argument (optional):
 
-    - `:use_mdc` - validates Modification Detection Code Packet if set to `true` and raises on failure (default: `false`)
+    - `:use_mdc` - validates Modification Detection Code Packet and raises on failure if set to `true` (default: `false`)
   """
   @spec decrypt(t(), PKESK.t(), opts :: [{:use_mdc, boolean()}]) :: t()
   def decrypt(%__MODULE__{} = packet, %PKESK{} = pkesk, opts \\ []) do
@@ -177,20 +177,6 @@ defmodule OpenPGP.IntegrityProtectedDataPacket do
 
     %{packet | plaintext: plaintext}
   end
-
-  @doc """
-  Encodes a Sym. Encrypted and Integrity Protected Data Packet given input binary.
-  Returns encoded packet body.
-
-  ### Example:
-
-      iex> alias OpenPGP.IntegrityProtectedDataPacket
-      ...> IntegrityProtectedDataPacket.encode("Hello")
-      <<1::8, "Hello">>
-  """
-  @version 1
-  @spec encode(input :: binary()) :: binary()
-  def encode("" <> _ = input), do: <<@version::8, input::binary>>
 
   @doc """
   Encrypt plaintext binary with a given symmetrical key and algorithm.

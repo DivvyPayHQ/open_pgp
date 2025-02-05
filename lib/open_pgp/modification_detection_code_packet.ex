@@ -99,16 +99,9 @@ defmodule OpenPGP.ModificationDetectionCodePacket do
   end
 
   @doc """
-  Encode Modification Detection Code Packet given input binary.
-  Returns encoded packet body.
-  """
-  @spec encode(input :: binary()) :: <<_::160>>
-  def encode("" <> _ = input), do: :crypto.hash(:sha, input <> @mdc_header)
-
-  @doc """
-  Encode Modification Detection Code (MDC) Packet ad appends to the input binary.
+  Encode Modification Detection Code (MDC) Packet and append to the input binary.
   Returns binary with MDC appended.
   """
   @spec append_to(input :: binary()) :: binary()
-  def append_to("" <> _ = input), do: input <> @mdc_header <> encode(input)
+  def append_to("" <> _ = input), do: input <> @mdc_header <> :crypto.hash(:sha, input <> @mdc_header)
 end
