@@ -20,25 +20,28 @@ defimpl OpenPGP.Encode, for: OpenPGP.Packet.BodyChunk do
       ...> OpenPGP.Encode.encode(%OpenPGP.Packet.BodyChunk{data: rand_bytes})
       <<192::8, 63::8, rand_bytes::binary>>
 
-  Encodes five-octet length New Format Packet Length Header (8384-4_294_967_295 octets)
+  Encodes five-octet length New Format Packet Length Header (8384-4_294_967_295 (0xFFFFFFFF) octets)
 
       iex> rand_bytes = :crypto.strong_rand_bytes(8384)
       ...> OpenPGP.Encode.encode(%OpenPGP.Packet.BodyChunk{data: rand_bytes})
       <<255::8, 8384::32, rand_bytes::binary>>
   """
+  @one_octet_length 0..191
+  @two_octet_length 192..8383
+  @five_octet_length 8384..0xFFFFFFFF
   def encode(%BodyChunk{data: "" <> _ = data}, _opts) do
     blen = byte_size(data)
 
     hlen =
       cond do
-        blen in 0..191 ->
+        blen in @one_octet_length ->
           <<blen::8>>
 
-        blen in 192..8383 ->
+        blen in @two_octet_length ->
           <<b1::8, b2::8>> = <<blen - 192::16>>
           <<b1 + 192::8, b2::8>>
 
-        blen in 8384..0xFFFFFFFF ->
+        blen in @five_octet_length ->
           <<255::8, blen::32>>
 
         true ->
