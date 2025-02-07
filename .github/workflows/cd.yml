@@ -23,7 +23,7 @@ jobs:
         run: mix deps.get
       - name: Get version
         run: |
-          VERSION=$(grep -m1 version mix.exs | cut -d'"' -f2)
+          VERSION=$(grep -m1 version mix.exs | cut -d'"' -f2 | awk '{print "v" $0}')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Check version
         if: ${{ github.event.release.tag_name != env.VERSION }}
