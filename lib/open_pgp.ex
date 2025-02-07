@@ -74,6 +74,7 @@ defmodule OpenPGP do
   """
 
   alias __MODULE__.Encode
+  alias __MODULE__.Encrypt
   alias __MODULE__.Packet
   alias __MODULE__.Packet.PacketTag
   alias __MODULE__.Util
@@ -148,7 +149,7 @@ defmodule OpenPGP do
     end
   end
 
-  @doc "Encode any packet (except for %Packet{})."
+  @doc "Encode any packet (except for %Packet{}) that implements `OpenPGP.Encode` protocol."
   @spec encode_packet(any_packet()) :: binary()
   def encode_packet(%{} = packet) do
     tag = Encode.tag(packet)
@@ -157,4 +158,8 @@ defmodule OpenPGP do
 
     Encode.encode(%Packet{tag: ptag, body: body})
   end
+
+  @doc "Encrypt any packet that implements `OpenPGP.Encrypt` protocol."
+  @spec encrypt_packet(packet, opts :: Keyword.t()) :: packet when packet: any_packet()
+  def encrypt_packet(%{} = packet, opts \\ []) when is_list(opts), do: Encrypt.encrypt(packet, opts)
 end

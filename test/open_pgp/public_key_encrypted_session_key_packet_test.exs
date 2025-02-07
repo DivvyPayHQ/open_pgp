@@ -4,9 +4,11 @@ defmodule OpenPGP.PublicKeyEncryptedSessionKeyPacketTest do
   doctest OpenPGP.Encode.impl_for!(%OpenPGP.PublicKeyEncryptedSessionKeyPacket{})
 
   alias OpenPGP.Encode
+  alias OpenPGP.Encrypt
   alias OpenPGP.Packet
   alias OpenPGP.Packet.PacketTag
   alias OpenPGP.PublicKeyEncryptedSessionKeyPacket
+  alias OpenPGP.PublicKeyPacket
   alias OpenPGP.SecretKeyPacket
   alias OpenPGP.Util
 
@@ -79,7 +81,7 @@ defmodule OpenPGP.PublicKeyEncryptedSessionKeyPacketTest do
     end
   end
 
-  describe ".encrypt/2" do
+  describe "OpenPGP.Encrypt.encrypt/2" do
     # [RFC3526](https://datatracker.ietf.org/doc/html/rfc3526)
     @modp_group_1536 """
     FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1
@@ -105,16 +107,20 @@ defmodule OpenPGP.PublicKeyEncryptedSessionKeyPacketTest do
       private_key = :crypto.strong_rand_bytes(128)
       a = :binary.decode_unsigned(private_key)
 
-      # Generate the public key (g**private_key mod p)
+      # Generate the public key exp (g**private_key mod p)
       e = :crypto.mod_pow(g, a, p)
 
-      public_key_material = {@prime_p, @group_g, e}
-      public_key_algo = {16, "Elgamal (Encrypt-Only) [ELGAMAL] [HAC]"}
+      recipient_public_key = %PublicKeyPacket{
+        algo: {16, "Elgamal (Encrypt-Only) [ELGAMAL] [HAC]"},
+        material: {@prime_p, @group_g, e}
+      }
 
-      session_key_algo = {9, "AES with 256-bit key"}
-      session_key = "12345678901234567890123456789012"
+      pkesk_packet = %PKESK{
+        session_key_algo: {9, "AES with 256-bit key"},
+        session_key_material: {"12345678901234567890123456789012"}
+      }
 
-      assert ciphertext = PKESK.encrypt(session_key, session_key_algo, public_key_material, public_key_algo)
+      assert %PKESK{ciphertext: ciphertext} = Encrypt.encrypt(pkesk_packet, recipient_public_key: recipient_public_key)
 
       # Decrypt Elgamal
       assert {c1, next} = Util.decode_mpi(ciphertext)

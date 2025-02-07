@@ -1,7 +1,7 @@
 defimpl OpenPGP.Encode, for: OpenPGP.Packet.BodyChunk do
   alias OpenPGP.Packet.BodyChunk
 
-  def tag(_), do: raise(".tag/1 not supported by design for #{inspect(@for)}.")
+  def tag(_), do: raise(".tag/1 of protocol #{inspect(@protocol)} not supported by design for #{inspect(@for)}.")
 
   @doc """
   Encode body chunk. Always uses new packet format.

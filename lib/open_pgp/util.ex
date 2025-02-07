@@ -58,7 +58,7 @@ defmodule OpenPGP.Util do
   end
 
   @doc """
-  Invers of `.decode_mpi/1`. Takes an MPI value, and encode it as MPI
+  Inverse of `.decode_mpi/1`. Takes an MPI value, and encode it as MPI
   binary.
 
   ### Example:
@@ -262,4 +262,18 @@ defmodule OpenPGP.Util do
   """
   @spec compression_algo_tuple(byte()) :: compression_algo_tuple()
   def compression_algo_tuple(algo) when algo in @comp_algo_ids, do: {algo, @comp_algos[algo]}
+
+  @v06x_note """
+  As of 0.6.x supported sym.key ciphers are:
+
+    1. 7 (AES with 128-bit key) in CFB mode
+    1. 8 (AES with 192-bit key) in CFB mode
+    1. 9 (AES with 256-bit key) in CFB mode
+  """
+  @spec sym_algo_to_crypto_cipher(sym_algo_tuple() | byte()) :: :aes_128_cfb128 | :aes_192_cfb128 | :aes_256_cfb128
+  def sym_algo_to_crypto_cipher({algo, _}), do: sym_algo_to_crypto_cipher(algo)
+  def sym_algo_to_crypto_cipher(7), do: :aes_128_cfb128
+  def sym_algo_to_crypto_cipher(8), do: :aes_192_cfb128
+  def sym_algo_to_crypto_cipher(9), do: :aes_256_cfb128
+  def sym_algo_to_crypto_cipher(algo), do: raise(@v06x_note <> "\n Got: #{inspect(algo)}")
 end

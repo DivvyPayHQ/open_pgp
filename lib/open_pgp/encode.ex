@@ -10,6 +10,6 @@ end
 # https://github.com/elixir-lang/elixir/issues/7708#issuecomment-403422965
 
 defimpl OpenPGP.Encode, for: [Atom, BitString, Float, Function, Integer, List, Map, PID, Port, Reference, Tuple] do
-  def tag(_), do: raise(".tag/1 not implemented for #{inspect(@for)}.")
-  def encode(_, _), do: raise(".encode/2 not implemented for #{inspect(@for)}.")
+  def tag(subj), do: raise(Protocol.UndefinedError, protocol: @protocol, value: subj)
+  def encode(subj, _), do: raise(Protocol.UndefinedError, protocol: @protocol, value: subj)
 end

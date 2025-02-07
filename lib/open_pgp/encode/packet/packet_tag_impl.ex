@@ -1,7 +1,7 @@
 defimpl OpenPGP.Encode, for: OpenPGP.Packet.PacketTag do
   alias OpenPGP.Packet.PacketTag
 
-  def tag(_), do: raise(".tag/1 not supported by design for #{inspect(@for)}.")
+  def tag(_), do: raise(".tag/1 of protocol #{inspect(@protocol)} not supported by design for #{inspect(@for)}.")
 
   @doc """
   Encode packet tag. Always uses new packet format.

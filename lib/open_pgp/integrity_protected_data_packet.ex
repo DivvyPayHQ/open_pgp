@@ -156,7 +156,7 @@ defmodule OpenPGP.IntegrityProtectedDataPacket do
   @spec decrypt(t(), PKESK.t(), opts :: [{:use_mdc, boolean()}]) :: t()
   def decrypt(%__MODULE__{} = packet, %PKESK{} = pkesk, opts \\ []) do
     sym_key_algo = pkesk.session_key_algo
-    crypto_cipher = sym_algo_to_crypto_cipher(sym_key_algo)
+    crypto_cipher = Util.sym_algo_to_crypto_cipher(sym_key_algo)
     sym_key = elem(pkesk.session_key_material, 0)
     null_iv = build_null_iv(sym_key_algo)
     ciphertext = packet.ciphertext
@@ -177,41 +177,6 @@ defmodule OpenPGP.IntegrityProtectedDataPacket do
 
     %{packet | plaintext: plaintext}
   end
-
-  @doc """
-  Encrypt plaintext binary with a given symmetrical key and algorithm.
-  Returns a ciphertext binary encrypted with a given sym.key.
-  Accepts options keyword list as a third argument (optional):
-
-    - `:use_mdc` - the Modification Detection Code Packet added if set to `true` (default `true`)
-  """
-  @spec encrypt(plaintext, sym_key, sym_algo, opts) :: ciphertext
-        when plaintext: binary(),
-             sym_key: binary(),
-             sym_algo: Util.sym_algo_tuple() | byte(),
-             ciphertext: binary(),
-             opts: [{:use_mdc, boolean()}]
-  def encrypt(plaintext, sym_key, sym_algo, opts \\ []) do
-    crypto_cipher = sym_algo_to_crypto_cipher(sym_algo)
-    null_iv = build_null_iv(sym_algo)
-    checksum = build_checksum(sym_algo)
-
-    data =
-      if Keyword.get(opts, :use_mdc, true),
-        do: MDC.append_to(checksum <> plaintext),
-        else: checksum <> plaintext
-
-    ciphertext = :crypto.crypto_one_time(crypto_cipher, sym_key, null_iv, data, true)
-
-    ciphertext
-  end
-
-  @spec sym_algo_to_crypto_cipher(Util.sym_algo_tuple() | byte()) :: :aes_128_cfb128 | :aes_192_cfb128 | :aes_256_cfb128
-  defp sym_algo_to_crypto_cipher({algo, _}), do: sym_algo_to_crypto_cipher(algo)
-  defp sym_algo_to_crypto_cipher(7), do: :aes_128_cfb128
-  defp sym_algo_to_crypto_cipher(8), do: :aes_192_cfb128
-  defp sym_algo_to_crypto_cipher(9), do: :aes_256_cfb128
-  defp sym_algo_to_crypto_cipher(algo), do: raise(@v06x_note <> "\n Got: #{inspect(algo)}")
 
   @checksum_size 2 * 8
   defp validate_checksum!("" <> _ = plaintext, algo) do
@@ -241,8 +206,22 @@ defmodule OpenPGP.IntegrityProtectedDataPacket do
     {data, chsum1, chsum2, <<prefix::size(prefix_size), chsum1::size(@checksum_size), chsum2::size(@checksum_size)>>}
   end
 
+  @doc """
+  Build a checksum prefix.
+
+  > Instead of using an IV, OpenPGP prefixes an octet string to the data
+  > before it is encrypted.  The length of the octet string equals the
+  > block size of the cipher in octets, plus two. The first octets in
+  > the group, of length equal to the block size of the cipher, are
+  > random; the last two octets are each copies of their 2nd preceding
+  > octet. For example, with a cipher whose block size is 128 bits or
+  > 16 octets, the prefix data will contain 16 random octets, then two
+  > more octets, which are copies of the 15th and 16th octets,
+  > respectively.
+  """
   @checksum_size 2 * 8
-  defp build_checksum(algo) do
+  @spec build_checksum(Util.sym_algo_tuple()) :: binary()
+  def build_checksum(algo) do
     cipher_block_size = Util.sym_algo_cipher_block_size(algo)
     prefix_size = cipher_block_size - @checksum_size
     random_bytes = :crypto.strong_rand_bytes(div(cipher_block_size, 8))
@@ -252,8 +231,15 @@ defmodule OpenPGP.IntegrityProtectedDataPacket do
     <<random_bytes::binary, chsum::size(@checksum_size)>>
   end
 
+  @doc """
+  Build the Initial Vector (IV) as all zeroes.
+
+  > The Initial Vector (IV) is specified as all zeros.  Instead of using
+  > an IV, OpenPGP prefixes an octet string to the data before it is
+  > encrypted.
+  """
   @spec build_null_iv(Util.sym_algo_tuple() | byte()) :: binary()
-  defp build_null_iv(algo) do
+  def build_null_iv(algo) do
     size_bits = Util.sym_algo_cipher_block_size(algo)
     for(_ <- 1..size_bits, into: <<>>, do: <<0::1>>)
   end
