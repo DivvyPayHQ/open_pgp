@@ -33,7 +33,7 @@ defmodule OpenPGP.Packet do
 
   @type t :: %__MODULE__{
           tag: PacketTag.t(),
-          body: [BodyChunk.t()]
+          body: [BodyChunk.t()] | binary()
         }
 
   @doc """

@@ -73,18 +73,21 @@ defmodule OpenPGP do
       ]
   """
 
+  alias __MODULE__.Encode
+  alias __MODULE__.Encrypt
   alias __MODULE__.Packet
   alias __MODULE__.Packet.PacketTag
   alias __MODULE__.Util
 
   @type any_packet ::
-          OpenPGP.Packet.t()
-          | OpenPGP.PublicKeyEncryptedSessionKeyPacket.t()
-          | OpenPGP.SecretKeyPacket.t()
-          | OpenPGP.PublicKeyPacket.t()
-          | OpenPGP.CompressedDataPacket.t()
-          | OpenPGP.IntegrityProtectedDataPacket.t()
-          | OpenPGP.LiteralDataPacket.t()
+          %OpenPGP.Packet{}
+          | %OpenPGP.PublicKeyEncryptedSessionKeyPacket{}
+          | %OpenPGP.SecretKeyPacket{}
+          | %OpenPGP.PublicKeyPacket{}
+          | %OpenPGP.CompressedDataPacket{}
+          | %OpenPGP.IntegrityProtectedDataPacket{}
+          | %OpenPGP.LiteralDataPacket{}
+          | %OpenPGP.ModificationDetectionCodePacket{}
 
   @doc """
   Decode all packets in a message (input).
@@ -145,4 +148,18 @@ defmodule OpenPGP do
         packet
     end
   end
+
+  @doc "Encode any packet (except for %Packet{}) that implements `OpenPGP.Encode` protocol."
+  @spec encode_packet(any_packet()) :: binary()
+  def encode_packet(%{} = packet) do
+    tag = Encode.tag(packet)
+    ptag = %PacketTag{format: :new, tag: tag}
+    body = Encode.encode(packet)
+
+    Encode.encode(%Packet{tag: ptag, body: body})
+  end
+
+  @doc "Encrypt any packet that implements `OpenPGP.Encrypt` protocol."
+  @spec encrypt_packet(packet, opts :: Keyword.t()) :: packet when packet: any_packet()
+  def encrypt_packet(%{} = packet, opts \\ []) when is_list(opts), do: Encrypt.encrypt(packet, opts)
 end

@@ -137,12 +137,20 @@ defmodule OpenPGP.PublicKeyPacket do
     {packet, next}
   end
 
-  # Support only RSA as of version 0.5.x
+  # Support only RSA and ElGamal as of version 0.6.x
   defp decode_material(algo, "" <> _ = input) when algo in [1, 2, 3] do
     {mod_n, next} = Util.decode_mpi(input)
     {exp_e, rest} = Util.decode_mpi(next)
 
     {{mod_n, exp_e}, rest}
+  end
+
+  defp decode_material(algo, "" <> _ = input) when algo == 16 do
+    {prime_p, next} = Util.decode_mpi(input)
+    {group_g, next} = Util.decode_mpi(next)
+    {value_y, rest} = Util.decode_mpi(next)
+
+    {{prime_p, group_g, value_y}, rest}
   end
 
   defp build_key_id("" <> _ = input, "" <> _ = next) do

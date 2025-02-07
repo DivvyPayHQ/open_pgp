@@ -1,11 +1,20 @@
 defmodule OpenPGP.PublicKeyEncryptedSessionKeyPacket do
+  @v06x_note """
+  As of 0.6.x Public Key Encrypted Session Key Packet:
+
+    1. Encrypts the session key with "Elgamal (Encrypt-Only)" algorithm only (algo 16)
+    1. Decrypts the session key encrypted with "RSA (Encrypt or Sign)" algorithm only (algo 1)
+  """
+
   @moduledoc """
-  Represents structured data for Public-Key Encrypted SessionKey Packet.
+  Represents structured data for Public-Key Encrypted Session Key Packet.
 
   The `:ciphertext` attribute is set once the packet is decoded with
   `.decode/1` and the packet data is still symmetrically encrypted. The
   next logical step is to decrypt packet with `.decrypt/2` to get
   symmetrically encrypted session key material.
+
+  > NOTE: #{@v06x_note}
 
   ---
 
@@ -98,7 +107,7 @@ defmodule OpenPGP.PublicKeyEncryptedSessionKeyPacket do
         }
 
   @doc """
-  Decode Public-Key Encrypted SessionKey Packet given input binary.
+  Decode Public-Key Encrypted Session Key Packet given input binary.
   Return structured packet and remaining binary.
   """
   @impl OpenPGP.Packet.Behaviour

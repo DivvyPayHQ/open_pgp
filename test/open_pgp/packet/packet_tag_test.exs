@@ -1,6 +1,7 @@
 defmodule OpenPGP.Packet.PacketTagTest do
   use OpenPGP.Test.Case, async: true
   doctest OpenPGP.Packet.PacketTag
+  doctest OpenPGP.Encode.impl_for!(%OpenPGP.Packet.PacketTag{})
 
   alias OpenPGP.Packet.PacketTag
 

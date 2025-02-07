@@ -18,6 +18,13 @@ defmodule OpenPGPTest do
   Generate keyring with RSA2048 algo:
   `gpg --batch --passphrase "passphrase" --quick-generate-key "John Doe (RSA2048) <john.doe@example.com>" rsa2048 default never`
 
+  Generate private key with DSA2048 algo and ELG2046 sub-key:
+
+  ```
+  gpg --batch --passphrase "passphrase" --quick-generate-key "John Doe (ELG2048) <john.doe.elg2048@example.com>" dsa2048 default never
+  gpg --quick-add-key <KEY_ID_HERE> elg2048 default never
+  ```
+
   Export private key:
   `gpg --export-secret-keys "john.doe@example.com" > test/fixtures/rsa2048-priv.pgp`
 

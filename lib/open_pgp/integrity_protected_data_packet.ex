@@ -1,9 +1,11 @@
 defmodule OpenPGP.IntegrityProtectedDataPacket do
-  @v05x_note """
-  As of 0.5.x Symmetrically Encrypted Integrity Protected Data Packet:
+  @v06x_note """
+  As of 0.6.x Symmetrically Encrypted Integrity Protected Data Packet:
 
+    1. Modification Detection Code system is supported, but not enforced in decryption
+    1. Supports Session Key algo 7 (AES with 128-bit key) in CFB mode
+    1. Supports Session Key algo 8 (AES with 192-bit key) in CFB mode
     1. Supports Session Key algo 9 (AES with 256-bit key) in CFB mode
-    2. Modification Detection Code system is not supported
   """
   @moduledoc """
   Represents structured data for Integrity Protected Data Packet.
@@ -54,7 +56,7 @@ defmodule OpenPGP.IntegrityProtectedDataPacket do
       }
 
 
-  > NOTE: #{@v05x_note}
+  > NOTE: #{@v06x_note}
 
   ---
 
@@ -113,6 +115,7 @@ defmodule OpenPGP.IntegrityProtectedDataPacket do
 
   @behaviour OpenPGP.Packet.Behaviour
 
+  alias OpenPGP.ModificationDetectionCodePacket, as: MDC
   alias OpenPGP.PublicKeyEncryptedSessionKeyPacket, as: PKESK
   alias OpenPGP.Util
 
@@ -146,54 +149,98 @@ defmodule OpenPGP.IntegrityProtectedDataPacket do
   Encrypted Session Key Packet.
   Return PKESK-Packet with `:plaintext` attr assigned.
   Raises an error if checksum does not match.
+  Accepts options keyword list as a third argument (optional):
+
+    - `:use_mdc` - validates Modification Detection Code Packet and raises on failure if set to `true` (default: `false`)
   """
-  @spec decrypt(t(), PKESK.t()) :: t()
-  def decrypt(%__MODULE__{ciphertext: ciphertext} = packet, %PKESK{} = pkesk) do
-    session_key =
-      case pkesk do
-        %PKESK{session_key_algo: {9, _}, session_key_material: {session_key}} -> session_key
-        _ -> raise(@v05x_note <> "\n Got: #{inspect(pkesk)}")
+  @spec decrypt(t(), PKESK.t(), opts :: [{:use_mdc, boolean()}]) :: t()
+  def decrypt(%__MODULE__{} = packet, %PKESK{} = pkesk, opts \\ []) do
+    sym_key_algo = pkesk.session_key_algo
+    crypto_cipher = Util.sym_algo_to_crypto_cipher(sym_key_algo)
+    sym_key = elem(pkesk.session_key_material, 0)
+    null_iv = build_null_iv(sym_key_algo)
+    ciphertext = packet.ciphertext
+
+    payload = :crypto.crypto_one_time(crypto_cipher, sym_key, null_iv, ciphertext, false)
+
+    {data, _chsum} = validate_checksum!(payload, sym_key_algo)
+
+    plaintext =
+      if Keyword.get(opts, :use_mdc, false) do
+        {data_w_checksum, _sha} = MDC.validate!(payload)
+        {data, _, _, _} = trim_checksum(data_w_checksum, sym_key_algo)
+
+        data
+      else
+        data
       end
 
-    null_iv = build_null_iv(pkesk)
-    payload = decrypt(:aes_256_cfb128, session_key, null_iv, ciphertext)
-    {data, _chsum} = validate_checksum!(payload, pkesk)
-
-    %{packet | plaintext: data}
+    %{packet | plaintext: plaintext}
   end
 
-  @checksum_octets 2
-  defp validate_checksum!("" <> _ = plaintext, %PKESK{session_key_algo: sk_algo}) do
-    cipher_block_octets = sk_algo |> Util.sym_algo_cipher_block_size() |> Kernel.div(8)
-    prefix_byte_size = cipher_block_octets - @checksum_octets
-
-    <<
-      _::bytes-size(prefix_byte_size),
-      chsum1::bytes-size(@checksum_octets),
-      chsum2::bytes-size(@checksum_octets),
-      data::binary
-    >> = plaintext
+  @checksum_size 2 * 8
+  defp validate_checksum!("" <> _ = plaintext, algo) do
+    {data, chsum1, chsum2, prefix} = trim_checksum(plaintext, algo)
 
     if chsum1 == chsum2 do
       {data, chsum1}
     else
+      prefix_byte_size = byte_size(prefix)
       chsum1_hex = inspect(chsum1, base: :binary)
       chsum2_hex = inspect(chsum2, base: :binary)
 
       msg =
         "Expected IntegrityProtectedDataPacket prefix octets " <>
-          "#{prefix_byte_size + 1}, #{prefix_byte_size + 2} to match octets " <>
-          "#{prefix_byte_size + 3}, #{prefix_byte_size + 4}: #{chsum1_hex} != #{chsum2_hex}."
+          "#{prefix_byte_size - 3}, #{prefix_byte_size - 2} to match octets " <>
+          "#{prefix_byte_size - 1}, #{prefix_byte_size - 0}: #{chsum1_hex} != #{chsum2_hex}."
 
       raise(msg)
     end
   end
 
-  defp build_null_iv(%PKESK{session_key_algo: sk_algo}) do
-    size_bits = Util.sym_algo_cipher_block_size(sk_algo)
-    for(_ <- 1..size_bits, into: <<>>, do: <<0::1>>)
+  defp trim_checksum("" <> _ = plaintext, algo) do
+    cipher_block_size = Util.sym_algo_cipher_block_size(algo)
+    prefix_size = cipher_block_size - @checksum_size
+    <<prefix::size(prefix_size), chsum1::size(@checksum_size), chsum2::size(@checksum_size), data::binary>> = plaintext
+
+    {data, chsum1, chsum2, <<prefix::size(prefix_size), chsum1::size(@checksum_size), chsum2::size(@checksum_size)>>}
   end
 
-  defp decrypt(cipher, key, iv, ciphertext),
-    do: :crypto.crypto_one_time(cipher, key, iv, ciphertext, false)
+  @doc """
+  Build a checksum prefix.
+
+  > Instead of using an IV, OpenPGP prefixes an octet string to the data
+  > before it is encrypted.  The length of the octet string equals the
+  > block size of the cipher in octets, plus two. The first octets in
+  > the group, of length equal to the block size of the cipher, are
+  > random; the last two octets are each copies of their 2nd preceding
+  > octet. For example, with a cipher whose block size is 128 bits or
+  > 16 octets, the prefix data will contain 16 random octets, then two
+  > more octets, which are copies of the 15th and 16th octets,
+  > respectively.
+  """
+  @checksum_size 2 * 8
+  @spec build_checksum(Util.sym_algo_tuple()) :: binary()
+  def build_checksum(algo) do
+    cipher_block_size = Util.sym_algo_cipher_block_size(algo)
+    prefix_size = cipher_block_size - @checksum_size
+    random_bytes = :crypto.strong_rand_bytes(div(cipher_block_size, 8))
+
+    <<_::size(prefix_size), chsum::size(@checksum_size)>> = random_bytes
+
+    <<random_bytes::binary, chsum::size(@checksum_size)>>
+  end
+
+  @doc """
+  Build the Initial Vector (IV) as all zeroes.
+
+  > The Initial Vector (IV) is specified as all zeros.  Instead of using
+  > an IV, OpenPGP prefixes an octet string to the data before it is
+  > encrypted.
+  """
+  @spec build_null_iv(Util.sym_algo_tuple() | byte()) :: binary()
+  def build_null_iv(algo) do
+    size_bits = Util.sym_algo_cipher_block_size(algo)
+    for(_ <- 1..size_bits, into: <<>>, do: <<0::1>>)
+  end
 end

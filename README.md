@@ -282,6 +282,10 @@ Packet specific decoders implement `OpenPGP.Packet.Behaviour`, which exposes `.d
 
 Usage example of a comon use case can be found in `test/open_pgp/open_pgp_test.exs` in the test **"full integration: load private key and decrypt encrypted file"**
 
+As of v0.6.x
+
+1. Limited support of encoding and encryption (see CHANGELOG.md) for details.
+
 ## Refs, Snippets, Misc
 
 ```console

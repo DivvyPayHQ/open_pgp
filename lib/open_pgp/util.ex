@@ -58,7 +58,7 @@ defmodule OpenPGP.Util do
   end
 
   @doc """
-  Invers of `.decode_mpi/1`. Takes an MPI value, and encode it as MPI
+  Inverse of `.decode_mpi/1`. Takes an MPI value, and encode it as MPI
   binary.
 
   ### Example:
@@ -68,19 +68,18 @@ defmodule OpenPGP.Util do
 
       iex> OpenPGP.Util.encode_mpi(<<0x1, 0xFF>>)
       <<0x0, 0x9, 0x1, 0xFF>>
+
+      iex> :crypto.strong_rand_bytes(65536) |> OpenPGP.Util.encode_mpi()
+      ** (RuntimeError) big-endian is too long
   """
-  @spec encode_mpi(mpi_value :: binary()) :: binary()
-  def encode_mpi(mpi_value) do
-    bits = for <<bit::1 <- mpi_value>>, do: bit
-    bsize = bit_size(mpi_value)
+  @spec encode_mpi(big_endian :: binary()) :: mpi :: <<_::16, _::_*8>>
+  def encode_mpi("" <> _ = big_endian) do
+    if byte_size(big_endian) > 65535, do: raise("big-endian is too long")
 
-    mpi_length =
-      Enum.reduce_while(bits, bsize, fn
-        1, acc -> {:halt, acc}
-        0, acc -> {:cont, acc - 1}
-      end)
+    bit_list = for <<bit::1 <- big_endian>>, do: bit
+    bit_count = bit_list |> Enum.drop_while(&(&1 == 0)) |> length()
 
-    <<mpi_length::16, mpi_value::binary>>
+    <<bit_count::16, big_endian::binary>>
   end
 
   @doc """
@@ -263,4 +262,18 @@ defmodule OpenPGP.Util do
   """
   @spec compression_algo_tuple(byte()) :: compression_algo_tuple()
   def compression_algo_tuple(algo) when algo in @comp_algo_ids, do: {algo, @comp_algos[algo]}
+
+  @v06x_note """
+  As of 0.6.x supported sym.key ciphers are:
+
+    1. 7 (AES with 128-bit key) in CFB mode
+    1. 8 (AES with 192-bit key) in CFB mode
+    1. 9 (AES with 256-bit key) in CFB mode
+  """
+  @spec sym_algo_to_crypto_cipher(sym_algo_tuple() | byte()) :: :aes_128_cfb128 | :aes_192_cfb128 | :aes_256_cfb128
+  def sym_algo_to_crypto_cipher({algo, _}), do: sym_algo_to_crypto_cipher(algo)
+  def sym_algo_to_crypto_cipher(7), do: :aes_128_cfb128
+  def sym_algo_to_crypto_cipher(8), do: :aes_192_cfb128
+  def sym_algo_to_crypto_cipher(9), do: :aes_256_cfb128
+  def sym_algo_to_crypto_cipher(algo), do: raise(@v06x_note <> "\n Got: #{inspect(algo)}")
 end

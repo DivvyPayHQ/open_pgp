@@ -1,6 +1,7 @@
 defmodule OpenPGP.Packet.BodyChunkTest do
   use OpenPGP.Test.Case, async: true
   doctest OpenPGP.Packet.BodyChunk
+  doctest OpenPGP.Encode.impl_for!(%OpenPGP.Packet.BodyChunk{})
 
   alias OpenPGP.Packet.BodyChunk, as: BChunk
   alias OpenPGP.Packet.PacketTag, as: PacketTag
