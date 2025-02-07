@@ -14,7 +14,7 @@ Add `:open_pgp` to the list of dependencies in `mix.exs`:
 ```elixir
 def deps() do
   [
-    {:open_pgp, "~> 0.5"}
+    {:open_pgp, "~> 0.6"}
   ]
 end
 ```
