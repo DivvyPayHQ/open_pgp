@@ -123,7 +123,7 @@ defmodule OpenPGP.PublicKeyEncryptedSessionKeyPacket do
     {version, pub_key_id, pub_key_algo, ciphertext} =
       case input do
         <<ver::8, pk_id::bytes-size(8), algo::8, ciphertext::binary>> -> {ver, pk_id, algo, ciphertext}
-        _ -> raise(@decode_error <> " Got #{byte_size(input)} bytes of " <> inspect(input, binaries: :as_binaries))
+        _ -> raise(@decode_error <> "\nGot #{byte_size(input)} byte(s) of " <> inspect(input, binaries: :as_binaries))
       end
 
     packet = %__MODULE__{
