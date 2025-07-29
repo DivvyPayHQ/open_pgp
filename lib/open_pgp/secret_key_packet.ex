@@ -1,17 +1,17 @@
 defmodule OpenPGP.SecretKeyPacket do
-  @v05x_note """
-  As of 0.5.x Secret-Key Packet supports only:
+  @v06x_note """
+  As of 0.6.x Secret-Key Packet supports only:
 
     1. V4 packets
     1. Iterated and Salted String-to-Key (S2K) specifier (ID: 3)
-    1. S2K usage convention octet of 254 only
+    1. S2K usage convention octet of 254 or 0 (no S2K given)
     1. S2K hashing algo SHA1
     1. AES128 symmetric encryption of secret key material
   """
   @moduledoc """
   Represents structured data for Secret-Key Packet.
 
-  > NOTE: #{@v05x_note}
+  > NOTE: #{@v06x_note}
   ---
 
   ## [RFC4880](https://www.ietf.org/rfc/rfc4880.txt)
@@ -128,12 +128,13 @@ defmodule OpenPGP.SecretKeyPacket do
   @type t :: %__MODULE__{
           public_key: PublicKeyPacket.t(),
           s2k_usage: {0..255, binary()},
-          s2k_specifier: S2KSpecifier.t(),
+          s2k_specifier: S2KSpecifier.t() | nil,
           sym_key_algo: OpenPGP.Util.sym_algo_tuple(),
-          sym_key_initial_vector: binary(),
-          sym_key_size: non_neg_integer(),
+          sym_key_initial_vector: binary() | nil,
+          sym_key_size: non_neg_integer() | nil,
           secret_key_material: tuple() | nil,
-          ciphertext: binary()
+          ciphertext: binary(),
+          secret_key_material: tuple()
         }
 
   @doc """
@@ -162,22 +163,39 @@ defmodule OpenPGP.SecretKeyPacket do
         }
 
         {packet, ""}
+
+      <<s2k_usage::8, next::binary>> when s2k_usage == 0 ->
+        packet = %__MODULE__{
+          public_key: public_key,
+          s2k_usage: s2k_usage_tuple(s2k_usage),
+          sym_key_algo: Util.sym_algo_tuple(0),
+          ciphertext: next
+        }
+
+        {packet, ""}
     end
   end
 
   @doc """
   Decrypt Secret-Key Packet given decoded Secret-Key Packet and a
-  passphrase.
+  passphrase (optional).
   Return Secret-Key Packet with `:secret_key_material` attr assigned.
-  Raises an error if checksum does not match.
+  Raises an error if checksum/hash does not match.
   """
-  @spec decrypt(t(), passphrase :: binary()) :: t()
-  def decrypt(%__MODULE__{} = packet, "" <> _ = passphrase) do
+  @spec decrypt(t(), passphrase :: binary() | nil) :: t()
+  def decrypt(%__MODULE__{public_key: %{version: 4}} = packet, passphrase) do
     case packet do
-      %__MODULE__{public_key: %{version: 4}, s2k_usage: {254, _}, sym_key_algo: {7, _}} -> :ok
-      %__MODULE__{} -> raise(@v05x_note <> "\n Got: #{inspect(packet)}")
+      %__MODULE__{s2k_usage: {254, _}, sym_key_algo: {7, _}} -> do_decrypt({254, 7}, packet, passphrase)
+      %__MODULE__{s2k_usage: {0, _}, sym_key_algo: {0, _}} -> do_decrypt({0, 0}, packet, nil)
+      %__MODULE__{} -> raise(@v06x_note <> "\n Got: #{inspect(packet)}")
     end
+  end
 
+  def decrypt(%__MODULE__{public_key: %{version: _}} = packet, _passphrase) do
+    raise(@v06x_note <> "\n Got: #{inspect(packet)}")
+  end
+
+  defp do_decrypt({254 = _s2k_usage, 7 = _sym_key_algo}, %__MODULE__{} = packet, passphrase) do
     %__MODULE__{
       sym_key_size: session_key_size,
       sym_key_initial_vector: iv,
@@ -188,7 +206,7 @@ defmodule OpenPGP.SecretKeyPacket do
     session_key = S2KSpecifier.build_session_key(s2k_specifier, session_key_size, passphrase)
 
     plaintext = :crypto.crypto_one_time(:aes_128_cfb128, session_key, iv, ciphertext, false)
-    {data, _checksum} = validate_checksum!(plaintext)
+    {data, _hash} = validate_hash!(plaintext)
 
     {secret_exp_d, next} = Util.decode_mpi(data)
     {prime_val_p, next} = Util.decode_mpi(next)
@@ -200,14 +218,48 @@ defmodule OpenPGP.SecretKeyPacket do
     %{packet | secret_key_material: material}
   end
 
-  @checksum_byte_size 20
+  defp do_decrypt({0 = _s2k_usage, 0 = _sym_key_algo}, %__MODULE__{} = packet, _passphrase) do
+    {data, _checksum} = validate_checksum!(packet.ciphertext)
+
+    {secret_exp_d, next} = Util.decode_mpi(data)
+    {prime_val_p, next} = Util.decode_mpi(next)
+    {prime_val_q, next} = Util.decode_mpi(next)
+    {secret_u, ""} = Util.decode_mpi(next)
+
+    material = {secret_exp_d, prime_val_p, prime_val_q, secret_u}
+
+    %{packet | secret_key_material: material}
+  end
+
+  @hash_byte_size 20
+  @spec validate_hash!(binary()) :: {data :: binary(), hash :: binary()}
+  defp validate_hash!("" <> _ = plaintext) do
+    data_byte_size = byte_size(plaintext) - @hash_byte_size
+
+    <<data::bytes-size(data_byte_size), expected_hash::bytes-size(@hash_byte_size)>> = plaintext
+
+    actual_hash = :crypto.hash(:sha, data)
+
+    if actual_hash == expected_hash do
+      {data, actual_hash}
+    else
+      expected_hex = expected_hash |> Base.encode16() |> inspect()
+      actual_hex = actual_hash |> Base.encode16() |> inspect()
+
+      msg = "Expected SecretKeyPacket SHA1 hash to be #{expected_hex}, got #{actual_hex}. Maybe incorrect passphrase?"
+
+      raise(msg)
+    end
+  end
+
+  @checksum_byte_size 2
   @spec validate_checksum!(binary()) :: {data :: binary(), checksum :: binary()}
   defp validate_checksum!("" <> _ = plaintext) do
-    plaintext_byte_size = byte_size(plaintext) - @checksum_byte_size
+    data_byte_size = byte_size(plaintext) - @checksum_byte_size
 
-    <<data::bytes-size(plaintext_byte_size), expected_checksum::bytes-size(@checksum_byte_size)>> = plaintext
+    <<data::bytes-size(data_byte_size), expected_checksum::bytes-size(@checksum_byte_size)>> = plaintext
 
-    actual_checksum = :crypto.hash(:sha, data)
+    actual_checksum = Util.checksum(data)
 
     if actual_checksum == expected_checksum do
       {data, actual_checksum}
@@ -215,13 +267,13 @@ defmodule OpenPGP.SecretKeyPacket do
       expected_hex = expected_checksum |> Base.encode16() |> inspect()
       actual_hex = actual_checksum |> Base.encode16() |> inspect()
 
-      msg = "Expected SecretKeyPacket checksum to be #{expected_hex}, got #{actual_hex}. Maybe incorrect passphrase?"
+      msg = "Expected SecretKeyPacket checksum to be #{expected_hex}, got #{actual_hex}. Maybe malformed ciphertext?"
 
       raise(msg)
     end
   end
 
-  @s2k_spec_given_text "String-to-key specifier is being given"
-  defp s2k_usage_tuple(octet) when octet in 254..255, do: {octet, @s2k_spec_given_text}
+  defp s2k_usage_tuple(octet) when octet in 254..255, do: {octet, "String-to-key specifier is being given"}
+  defp s2k_usage_tuple(octet) when octet == 0, do: {octet, "String-to-key specifier is not given"}
   defp s2k_usage_tuple(octet), do: Util.sym_algo_tuple(octet)
 end
