@@ -160,9 +160,9 @@ defmodule OpenPGP.PublicKeyEncryptedSessionKeyPacket do
     payload = :crypto.private_decrypt(:rsa, encrypted_session_key, priv_key, [])
 
     bsize = byte_size(payload) - 2 - 1
-    <<sym_key_algo::8, session_key::bytes-size(bsize), expected_checksum::16>> = payload
-    octets = for <<b::8 <- session_key>>, do: b
-    actual_checksum = octets |> Enum.sum() |> rem(65536)
+    <<sym_key_algo::8, session_key::bytes-size(bsize), expected_checksum::bytes-size(2)>> = payload
+
+    actual_checksum = Util.checksum(session_key)
 
     if expected_checksum == actual_checksum do
       %{

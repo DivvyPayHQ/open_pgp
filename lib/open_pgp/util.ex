@@ -292,4 +292,20 @@ defmodule OpenPGP.Util do
   def sym_algo_to_crypto_cipher(8), do: :aes_192_cfb128
   def sym_algo_to_crypto_cipher(9), do: :aes_256_cfb128
   def sym_algo_to_crypto_cipher(algo), do: raise(@v06x_note <> "\n Got: #{inspect(algo)}")
+
+  @doc """
+  Calculate a two-octet checksum, which is equal to the sum of the
+  input binary octets modulo 65536.
+
+  ### Example:
+
+      iex> OpenPGP.Util.checksum(<<1::8, 2::8, 3::8>>)
+      <<6::16>>
+  """
+  @spec checksum(binary()) :: <<_::16>>
+  def checksum("" <> _ = binary) do
+    for <<byte::8 <- binary>>, reduce: <<0::16>> do
+      <<acc::16>> -> <<rem(acc + byte, 65536)::16>>
+    end
+  end
 end

@@ -61,12 +61,9 @@ defimpl OpenPGP.Encrypt, for: OpenPGP.PublicKeyEncryptedSessionKeyPacket do
     g = :binary.decode_unsigned(group_g)
     y = :binary.decode_unsigned(value_y)
 
-    checksum =
-      for <<byte::8 <- session_key>>, reduce: 0 do
-        acc -> rem(acc + byte, 65536)
-      end
+    chsum = Util.checksum(session_key)
 
-    value_m = Util.PKCS1.encode(:eme_pkcs1_v1_5, <<sym_algo_id::8, session_key::binary, checksum::16>>, sender_pub_key)
+    value_m = Util.PKCS1.encode(:eme_pkcs1_v1_5, <<sym_algo_id::8, session_key::binary, chsum::binary>>, sender_pub_key)
     m = :binary.decode_unsigned(value_m)
 
     g_k_mod_p = :crypto.mod_pow(g, k, p)
