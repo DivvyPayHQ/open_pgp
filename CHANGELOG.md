@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.3
+
+### Enhancements
+
+* Updated `OpenPGP.SecretKeyPacket` to support unencrypted keys (no S2K specifier given, S2K usage byte of 0).
+* Introduced `OpenPGP.Util.checksum/1` and refactored related codebase.
+
 ## v0.6.2
 
 ### Enhancements
