@@ -133,8 +133,7 @@ defmodule OpenPGP.SecretKeyPacket do
           sym_key_initial_vector: binary() | nil,
           sym_key_size: non_neg_integer() | nil,
           secret_key_material: tuple() | nil,
-          ciphertext: binary(),
-          secret_key_material: tuple()
+          ciphertext: binary()
         }
 
   @doc """
