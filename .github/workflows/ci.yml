@@ -21,6 +21,7 @@ jobs:
         include:
           - elixir: "1.18"
             otp: "27"
+            latest: true
           - elixir: "1.16"
             otp: "26"
           - elixir: "1.15"
@@ -54,6 +55,7 @@ jobs:
         run: mix deps.get
 
       - name: Check Formatting
+        if: matrix.latest
         run: mix format --check-formatted
 
       - name: Run unit tests

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.6.4
+
+### Enhancements
+
+* Implementation of User ID Packet (Tag 13) - `OpenPGP.UserIdPacket`
+* Add `OpenPGP.Encode` protocol implementation for:
+  * `OpenPGP.UserIdPacket`
+  * `OpenPGP.PublicKeyPacket`
+* Better error message for:
+  * `OpenPGP.cast_packet/1`
+
 ## v0.6.3
 
 ### Enhancements
