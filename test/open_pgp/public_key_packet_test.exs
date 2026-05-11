@@ -1,5 +1,8 @@
 defmodule OpenPGP.PublicKeyPacketTest do
   use OpenPGP.Test.Case, async: true
+
+  doctest OpenPGP.Encode.impl_for!(%OpenPGP.PublicKeyPacket{})
+
   alias OpenPGP.Packet
   alias OpenPGP.Packet.PacketTag
   alias OpenPGP.PublicKeyPacket
@@ -69,5 +72,38 @@ defmodule OpenPGP.PublicKeyPacketTest do
              "BB918F06DB37877E594D6C04CC28BE1EF9D6011E0655716CA507DEABDCA6E23B08079F915" <>
              "2CAC73CCC53706BE856E26D02D0A7F1AB8122614E91000F5EB1B240F50C66D9048F861D3" ==
              Base.encode16(value_y)
+  end
+
+  describe "OpenPGP.Encode.encode/1,2" do
+    test "encodes RSA public key to original bytes" do
+      assert [%Packet{body: chunks, tag: %PacketTag{tag: {5, "Secret-Key Packet"}}} | _] =
+               OpenPGP.list_packets(@rsa2048_priv)
+
+      # The Secret-Key packet contain all the data of the Public-Key packet,
+      # with additional algorithm-specific secret-key data appended.
+      # Here we decode a Secret-Key packet with the Publick-Key decoder,
+      # which will return the PublicKeyPacket struct and the remaining
+      # algorithm-specific secret-key data as a binary.
+      data = OpenPGP.Util.concat_body(chunks)
+      {pk_decoded, rest} = PublicKeyPacket.decode(data)
+
+      pk_raw_length = byte_size(data) - byte_size(rest)
+      <<pk_raw::bytes-size(pk_raw_length), _::binary>> = data
+
+      assert OpenPGP.Encode.encode(pk_decoded) == pk_raw
+    end
+
+    test "encodes ElGamal public key to original bytes" do
+      assert %Packet{body: chunks, tag: %PacketTag{tag: {14, "Public-Subkey Packet"}}} =
+               @elg2048_pub |> OpenPGP.list_packets() |> Enum.at(3)
+
+      data = OpenPGP.Util.concat_body(chunks)
+      {pk_decoded, <<>>} = PublicKeyPacket.decode(data)
+      assert OpenPGP.Encode.encode(pk_decoded) == data
+    end
+
+    test "tag/1 returns {6, Public-Key Packet}" do
+      assert {6, "Public-Key Packet"} = OpenPGP.Encode.tag(%PublicKeyPacket{})
+    end
   end
 end

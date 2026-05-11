@@ -157,10 +157,30 @@ defmodule OpenPGPTest do
     end
   end
 
+  @expected_error "OpenPGP.PublicKeyPacket.decode/1 decoded 697 unexpected trailing byte(s): " <>
+                    "<<254, 7, 3, 2, 248, 49, 205, 223, 27, 66, 166, 109, 252, 54, 235, 29, 19, 66, " <>
+                    "217, 249, 233, 73, 143, 69, 142, 10, 18, 42, 106, 122, 114, 71, 167, 145, 111, " <>
+                    "190, 206, 40, 102, 166, 213, 241, 148, 116, 163, 167, 163, 228, 5, 223, ...>>"
+  test "cast_packet/1 raises on trailing bytes from decoder" do
+    # PublicKeyPacket.decode/1 stops after reading the key material MPIs,
+    # so a Tag 6 packet body with extra trailing bytes produces a remainder.
+    # The secret key body starts with the public key fields followed by secret key data.
+    # Casting it as a Tag 6 (Public-Key) packet will leave the secret key bytes as remainder.
+
+    [%Packet{body: chunks, tag: %PacketTag{tag: {5, "Secret-Key Packet"}}} | _] = OpenPGP.list_packets(@rsa2048_priv)
+
+    ptag = %PacketTag{format: :new, tag: {6, "Public-Key Packet"}}
+    packet = %Packet{tag: ptag, body: chunks}
+
+    assert_raise RuntimeError, @expected_error, fn ->
+      OpenPGP.cast_packet(packet)
+    end
+  end
+
   test "decode secret key message" do
     assert [
              %SecretKeyPacket{},
-             %Packet{tag: %PacketTag{tag: {13, "User ID Packet"}}},
+             %OpenPGP.UserIdPacket{},
              %Packet{tag: %PacketTag{tag: {2, "Signature Packet"}}},
              %SecretKeyPacket{},
              %Packet{tag: %PacketTag{tag: {2, "Signature Packet"}}}
@@ -194,7 +214,7 @@ defmodule OpenPGPTest do
     assert keyring =
              [
                %SecretKeyPacket{},
-               %Packet{tag: %PacketTag{tag: {13, "User ID Packet"}}},
+               %OpenPGP.UserIdPacket{},
                %Packet{tag: %PacketTag{tag: {2, "Signature Packet"}}},
                %SecretKeyPacket{},
                %Packet{tag: %PacketTag{tag: {2, "Signature Packet"}}}

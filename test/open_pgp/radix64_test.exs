@@ -67,7 +67,7 @@ defmodule OpenPGP.Radix64Test do
                    version: 4
                  }
                },
-               %Packet{tag: %PacketTag{tag: {13, "User ID Packet"}}},
+               %OpenPGP.UserIdPacket{},
                %Packet{tag: %PacketTag{tag: {2, "Signature Packet"}}},
                %OpenPGP.SecretKeyPacket{
                  public_key: %PublicKeyPacket{

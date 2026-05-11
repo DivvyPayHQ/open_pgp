@@ -84,6 +84,7 @@ defmodule OpenPGP do
           | %OpenPGP.PublicKeyEncryptedSessionKeyPacket{}
           | %OpenPGP.SecretKeyPacket{}
           | %OpenPGP.PublicKeyPacket{}
+          | %OpenPGP.UserIdPacket{}
           | %OpenPGP.CompressedDataPacket{}
           | %OpenPGP.IntegrityProtectedDataPacket{}
           | %OpenPGP.LiteralDataPacket{}
@@ -125,6 +126,7 @@ defmodule OpenPGP do
     7 => OpenPGP.SecretKeyPacket,
     8 => OpenPGP.CompressedDataPacket,
     11 => OpenPGP.LiteralDataPacket,
+    13 => OpenPGP.UserIdPacket,
     14 => OpenPGP.PublicKeyPacket,
     18 => OpenPGP.IntegrityProtectedDataPacket
   }
@@ -141,7 +143,16 @@ defmodule OpenPGP do
     case packet.tag do
       %PacketTag{tag: {tag_id, _}} when tag_id in @tag_to_packet_ids ->
         impl = Map.get(@tag_to_packet, tag_id)
-        {casted, <<>>} = packet |> Util.concat_body() |> impl.decode()
+        {casted, rest} = packet |> Util.concat_body() |> impl.decode()
+        rsize = byte_size(rest)
+
+        if rsize > 0 do
+          err =
+            "#{inspect(impl)}.decode/1 decoded #{rsize} unexpected trailing byte(s): #{inspect(rest, printable_limit: 20)}"
+
+          raise(err)
+        end
+
         casted
 
       _ ->

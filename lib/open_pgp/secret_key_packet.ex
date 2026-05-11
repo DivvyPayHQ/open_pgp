@@ -108,8 +108,6 @@ defmodule OpenPGP.SecretKeyPacket do
 
   @behaviour OpenPGP.Packet.Behaviour
 
-  alias OpenPGP.Util
-
   defstruct [
     :public_key,
     :s2k_usage,
